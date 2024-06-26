@@ -1,10 +1,9 @@
 <?php
-
-// src/Controller/RegistrationController.php
 namespace App\Controller;
 
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,10 +11,13 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+/**
+ * @Route("/api")
+ */
 class RegistrationController extends AbstractController
 {
-    private $entityManager;
-    private $passwordHasher;
+    private EntityManagerInterface $entityManager;
+    private UserPasswordHasherInterface $passwordHasher;
 
     public function __construct(EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher)
     {
@@ -24,11 +26,10 @@ class RegistrationController extends AbstractController
     }
 
     /**
-     * @Route("/api/register", name="register", methods={"POST"})
+     * @Route("/register", name="register", methods={"POST"})
      */
-    public function register(Request $request, ValidatorInterface $validator)
+    public function register(Request $request, ValidatorInterface $validator, JWTTokenManagerInterface $jwtManager): JsonResponse
     {
-        // return $this->json(['message' => false], 400);
         $data = json_decode($request->getContent(), true);
 
         $user = new User();
@@ -37,13 +38,18 @@ class RegistrationController extends AbstractController
 
         $errors = $validator->validate($user);
         if (count($errors) > 0) {
-            $errorsString = (string) $errors;
-            return new JsonResponse(['errors' => $errorsString], JsonResponse::HTTP_BAD_REQUEST);
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[] = $error->getMessage();
+            }
+            return new JsonResponse(['errors' => $errorMessages], JsonResponse::HTTP_BAD_REQUEST);
         }
 
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-        return new JsonResponse(['status' => 'User created!'], JsonResponse::HTTP_CREATED);
+        $token = $jwtManager->create($user);
+
+        return new JsonResponse(['status' => 'User created!', 'token' => $token], JsonResponse::HTTP_CREATED);
     }
 }

@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:9000"  # Map your Symfony app's PHP-FPM port
+    volumes:
+      - .:/var/www/html
+    environment:
+      DATABASE_URL: "mysql://db_user:db_password@db:3306/db_name"  # Replace with your database details
+    depends_on:
+      - db
+
+  db:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: db_name
+      MYSQL_USER: db_user
+      MYSQL_PASSWORD: db_password
+    ports:
+      - "3306:3306"  # Map MySQL port
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
