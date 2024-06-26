@@ -3,3 +3,39 @@ controllers:
         path: ../src/Controller/
         namespace: App\Controller
     type: attribute
+# config/routes.yaml
+
+registration:
+    path: /api/register
+    controller: App\Controller\RegistrationController::register
+    methods: POST
+
+login:
+    path: /api/login
+    controller: App\Controller\LoginController::login
+    methods: POST
+
+product_list:
+    path: /api/products
+    controller: App\Controller\ProductController::list
+    methods: GET
+
+product_create:
+    path: /api/products
+    controller: App\Controller\ProductController::create
+    methods: POST
+
+product_show:
+    path: /api/products/{id}
+    controller: App\Controller\ProductController::show
+    methods: GET
+
+product_update:
+    path: /api/products/{id}
+    controller: App\Controller\ProductController::update
+    methods: PUT
+
+product_delete:
+    path: /api/products/{id}
+    controller: App\Controller\ProductController::delete
+    methods: DELETE
