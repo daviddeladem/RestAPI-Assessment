@@ -6,6 +6,7 @@ namespace App\Controller;
 use App\Entity\Product;
 use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -28,10 +29,22 @@ class ProductController extends AbstractController
     /**
      * @Route("", name="product_list", methods={"GET"})
      */
-    public function list(): JsonResponse
+    public function list(ManagerRegistry $doctrine): JsonResponse
     {
-        $products = $this->productRepository->findAll();
-        return new JsonResponse($products);
+        $products = $doctrine
+            ->getRepository(Product::class)
+            ->findAll();
+        $data = [];
+        foreach ($products as $product) {
+            $data[] = [
+                'id' => $product->getId(),
+                'name' => $product->getName(),
+                'description' => $product->getDescription(),
+                'price' => $product->getPrice(),
+            ];
+        }
+
+        return new JsonResponse($data);
     }
 
     /**
@@ -65,15 +78,21 @@ class ProductController extends AbstractController
     /**
      * @Route("/{id}", name="product_show", methods={"GET"})
      */
-    public function show(int $id): JsonResponse
+    public function show(int $id, ManagerRegistry $doctrine): JsonResponse
     {
         $product = $this->productRepository->find($id);
 
         if (!$product) {
             return new JsonResponse(['error' => 'Product not found'], JsonResponse::HTTP_NOT_FOUND);
         }
+        $data = [
+            'id' => $product->getId(),
+            'name' => $product->getName(),
+            'description' => $product->getDescription(),
+            'price' => $product->getPrice(),
+        ];
 
-        return new JsonResponse($product);
+        return new JsonResponse($data);
     }
 
     /**
