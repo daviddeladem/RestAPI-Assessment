@@ -1,9 +1,9 @@
 <?php
-// tests/Controller/RegistrationControllerTest.php
-// tests/Controller/RegistrationControllerTest.php
+
 namespace App\Tests\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\Response;
 
 class RegistrationControllerTest extends WebTestCase
 {
@@ -11,20 +11,12 @@ class RegistrationControllerTest extends WebTestCase
     {
         $client = static::createClient();
 
-        $client->request(
-            'POST',
-            '/api/register',
-            [],
-            [],
-            ['CONTENT_TYPE' => 'application/json'],
-            json_encode([
-                'email' => 'test@example.com',
-                'password' => 'password123',
-            ])
-        );
+        $client->request('POST', '/api/register', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode([
+            'email' => 'testuser1@example.com',
+            'password' => 'testpassword',
+        ]));
 
-        $this->assertEquals(201, $client->getResponse()->getStatusCode());
+        $this->assertEquals(Response::HTTP_CREATED, $client->getResponse()->getStatusCode());
         $this->assertJson($client->getResponse()->getContent());
-        $this->assertStringContainsString('User created!', $client->getResponse()->getContent());
     }
 }

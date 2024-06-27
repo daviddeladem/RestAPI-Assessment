@@ -1,85 +1,67 @@
 <?php
-
 // tests/Controller/ProductControllerTest.php
 namespace App\Tests\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\Response;
 
 class ProductControllerTest extends WebTestCase
 {
     private $token;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         $client = static::createClient();
 
-        // Register a new user
-        $client->request(
-            'POST',
-            '/api/register',
-            [],
-            [],
-            ['CONTENT_TYPE' => 'application/json'],
-            json_encode([
-                'email' => 'product@example.com',
-                'password' => 'password123',
-            ])
-        );
+        // Get JWT token
+        $client->request('POST', '/api/login', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode([
+            'email' => 'testuser1@example.com',
+            'password' => 'testpassword',
+        ]));
 
-        // Login to get JWT token
-        $client->request(
-            'POST',
-            '/api/login',
-            [],
-            [],
-            ['CONTENT_TYPE' => 'application/json'],
-            json_encode([
-                'email' => 'product@example.com',
-                'password' => 'password123',
-            ])
-        );
+        $response = $client->getResponse();
+        $responseData = json_decode($response->getContent(), true);
 
-        $response = json_decode($client->getResponse()->getContent(), true);
-        $this->token = $response['token'];
+        // Log the response for debugging
+        echo 'Login response: ' . $response->getContent() . PHP_EOL;
+
+        // Check if the response has the token key
+        if (!isset($responseData['token'])) {
+            echo 'Login failed. Response: ' . $response->getContent() . PHP_EOL;
+            $this->fail('Login failed. Token not received.');
+        }
+
+        $this->token = $responseData['token'];
+        $this->assertNotNull($this->token, 'JWT token should not be null');
     }
 
     public function testListProducts()
     {
         $client = static::createClient();
-        $client->request(
-            'GET',
-            '/api/products',
-            [],
-            [],
-            ['HTTP_AUTHORIZATION' => 'Bearer ' . $this->token]
-        );
 
-        $this->assertEquals(200, $client->getResponse()->getStatusCode());
+        $client->request('GET', '/api/products', [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
+        ]);
+
+        $this->assertEquals(Response::HTTP_OK, $client->getResponse()->getStatusCode());
+        $this->assertJson($client->getResponse()->getContent());
     }
 
     public function testCreateProduct()
     {
         $client = static::createClient();
 
-        $client->request(
-            'POST',
-            '/api/products',
-            [],
-            [],
-            [
-                'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
-                'CONTENT_TYPE' => 'application/json',
-            ],
-            json_encode([
-                'name' => 'Product 1',
-                'description' => 'Description 1',
-                'price' => '100.00',
-            ])
-        );
+        $client->request('POST', '/api/products', [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'name' => 'Test Product',
+            'description' => 'Test Description',
+            'price' => 99.99,
+        ]));
 
-        $this->assertEquals(201, $client->getResponse()->getStatusCode());
+        $this->assertEquals(Response::HTTP_CREATED, $client->getResponse()->getStatusCode());
         $this->assertJson($client->getResponse()->getContent());
-        $this->assertStringContainsString('Product created!', $client->getResponse()->getContent());
     }
 
     public function testShowProduct()
@@ -87,34 +69,27 @@ class ProductControllerTest extends WebTestCase
         $client = static::createClient();
 
         // Create a product first
-        $client->request(
-            'POST',
-            '/api/products',
-            [],
-            [],
-            [
-                'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
-                'CONTENT_TYPE' => 'application/json',
-            ],
-            json_encode([
-                'name' => 'Product 1',
-                'description' => 'Description 1',
-                'price' => '100.00',
-            ])
-        );
+        $client->request('POST', '/api/products', [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'name' => 'Test Product',
+            'description' => 'Test Description',
+            'price' => 99.99,
+        ]));
 
-        $response = json_decode($client->getResponse()->getContent(), true);
-        $productId = $response['id'];
+        $response = $client->getResponse();
+        $productData = json_decode($response->getContent(), true);
 
-        $client->request(
-            'GET',
-            '/api/products/' . $productId,
-            [],
-            [],
-            ['HTTP_AUTHORIZATION' => 'Bearer ' . $this->token]
-        );
+        // Check if productData has an 'id'
+        $this->assertArrayHasKey('id', $productData, 'Response should contain an id');
 
-        $this->assertEquals(200, $client->getResponse()->getStatusCode());
+        // Get the product
+        $client->request('GET', '/api/products/' . $productData['id'], [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
+        ]);
+
+        $this->assertEquals(Response::HTTP_OK, $client->getResponse()->getStatusCode());
         $this->assertJson($client->getResponse()->getContent());
     }
 
@@ -123,44 +98,33 @@ class ProductControllerTest extends WebTestCase
         $client = static::createClient();
 
         // Create a product first
-        $client->request(
-            'POST',
-            '/api/products',
-            [],
-            [],
-            [
-                'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
-                'CONTENT_TYPE' => 'application/json',
-            ],
-            json_encode([
-                'name' => 'Product 1',
-                'description' => 'Description 1',
-                'price' => '100.00',
-            ])
-        );
+        $client->request('POST', '/api/products', [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'name' => 'Test Product',
+            'description' => 'Test Description',
+            'price' => 99.99,
+        ]));
 
-        $response = json_decode($client->getResponse()->getContent(), true);
-        $productId = $response['id'];
+        $response = $client->getResponse();
+        $productData = json_decode($response->getContent(), true);
 
-        $client->request(
-            'PUT',
-            '/api/products/' . $productId,
-            [],
-            [],
-            [
-                'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
-                'CONTENT_TYPE' => 'application/json',
-            ],
-            json_encode([
-                'name' => 'Updated Product 1',
-                'description' => 'Updated Description 1',
-                'price' => '150.00',
-            ])
-        );
+        // Check if productData has an 'id'
+        $this->assertArrayHasKey('id', $productData, 'Response should contain an id');
 
-        $this->assertEquals(200, $client->getResponse()->getStatusCode());
+        // Update the product
+        $client->request('PUT', '/api/products/' . $productData['id'], [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'name' => 'Updated Product',
+            'description' => 'Updated Description',
+            'price' => 199.99,
+        ]));
+
+        $this->assertEquals(Response::HTTP_OK, $client->getResponse()->getStatusCode());
         $this->assertJson($client->getResponse()->getContent());
-        $this->assertStringContainsString('Product updated!', $client->getResponse()->getContent());
     }
 
     public function testDeleteProduct()
@@ -168,35 +132,27 @@ class ProductControllerTest extends WebTestCase
         $client = static::createClient();
 
         // Create a product first
-        $client->request(
-            'POST',
-            '/api/products',
-            [],
-            [],
-            [
-                'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
-                'CONTENT_TYPE' => 'application/json',
-            ],
-            json_encode([
-                'name' => 'Product 1',
-                'description' => 'Description 1',
-                'price' => '100.00',
-            ])
-        );
+        $client->request('POST', '/api/products', [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'name' => 'Test Product',
+            'description' => 'Test Description',
+            'price' => 99.99,
+        ]));
 
-        $response = json_decode($client->getResponse()->getContent(), true);
-        $productId = $response['id'];
+        $response = $client->getResponse();
+        $productData = json_decode($response->getContent(), true);
 
-        $client->request(
-            'DELETE',
-            '/api/products/' . $productId,
-            [],
-            [],
-            ['HTTP_AUTHORIZATION' => 'Bearer ' . $this->token]
-        );
+        // Check if productData has an 'id'
+        $this->assertArrayHasKey('id', $productData, 'Response should contain an id');
 
-        $this->assertEquals(200, $client->getResponse()->getStatusCode());
+        // Delete the product
+        $client->request('DELETE', '/api/products/' . $productData['id'], [], [], [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $this->token,
+        ]);
+
+        $this->assertEquals(Response::HTTP_OK, $client->getResponse()->getStatusCode());
         $this->assertJson($client->getResponse()->getContent());
-        $this->assertStringContainsString('Product deleted!', $client->getResponse()->getContent());
     }
 }

@@ -1,35 +1,33 @@
-# Use an official PHP runtime as a parent image
+# Use the official PHP image as a parent image
 FROM php:8.1-fpm
 
-# Set working directory
-WORKDIR /var/www/html
+# Set the working directory
+WORKDIR /var/www
 
-# Install dependencies
-RUN apt-get update && \
-    apt-get install -y \
-        git \
-        unzip \
-        libpq-dev \
-        libicu-dev \
-        libzip-dev \
-        zip \
-        && docker-php-ext-install pdo pdo_pgsql intl zip
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    locales \
+    zip \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install gd \
+    && docker-php-ext-install pdo pdo_mysql zip
 
 # Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy application code
+# Copy existing application directory contents
 COPY . .
 
-# Install Symfony CLI (optional but useful for Symfony projects)
-RUN curl -sS https://get.symfony.com/cli/installer | bash && \
-    mv /root/.symfony/bin/symfony /usr/local/bin/symfony
+# Install PHP dependencies
+RUN composer install
 
-# Install dependencies using Composer
-RUN composer install --no-scripts --no-autoloader
-
-# Copy environment file
-COPY .env .env
+# Change ownership of application directory
+RUN chown -R www-data:www-data /var/www
 
 # Expose port 9000 and start php-fpm server
 EXPOSE 9000
